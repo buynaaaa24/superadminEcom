@@ -98,7 +98,7 @@ export default function TenantsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-800">Төслүүд</h2>
-          <p className="text-sm text-slate-400 mt-0.5">ikhNayd дэлгүүрийн сайтуудыг удирдах</p>
+          <p className="text-sm text-slate-400 mt-0.5">Дэлгүүрийн сайтуудыг удирдах</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">

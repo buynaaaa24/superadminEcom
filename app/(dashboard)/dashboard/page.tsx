@@ -155,7 +155,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { href: "/tenants", label: "Шинэ төсөл нэмэх", desc: "ikhNaydEcomm клиент сайт үүсгэх", color: "#D32F2F",
+          { href: "/tenants", label: "Шинэ төсөл нэмэх", desc: "Клиент сайт үүсгэх", color: "#D32F2F",
             icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> },
           { href: "/admins", label: "Админ нэмэх", desc: "Шинэ админ хэрэглэгч үүсгэх", color: "#2563eb",
             icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg> },

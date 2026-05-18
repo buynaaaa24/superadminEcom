@@ -58,7 +58,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="superadmin@ikhnayd.mn"
+                placeholder="admin"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/50 focus:border-[#D32F2F]/60 transition-all"
               />
             </div>
@@ -131,8 +131,8 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-white/10 text-xs text-slate-500 text-center space-y-0.5">
-            <p>Demo: <span className="text-slate-400">superadmin@ikhnayd.mn</span></p>
-            <p>Нууц үг: <span className="text-slate-400">admin1234</span></p>
+            <p>Demo: <span className="text-slate-400">admin</span></p>
+            <p>Нууц үг: <span className="text-slate-400">admin123</span></p>
           </div>
         </div>
       </div>
