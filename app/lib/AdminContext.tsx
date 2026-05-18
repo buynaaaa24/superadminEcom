@@ -10,54 +10,50 @@ import {
 } from "react";
 import type { AdminUser, Tenant } from "./types";
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
+// ─── API config ───────────────────────────────────────────────────────────────
 
-const SEED_TENANTS: Tenant[] = [
-  {
-    id: "t1",
-    name: "ikhNaydEcomm Demo",
-    slug: "ikhnaydecomm-demo",
-    primaryColor: "#D32F2F",
-    logo: "",
-    font: "Inter",
-    layout: "modern",
-    features: { reviews: false, chat: false, loyaltyProgram: false },
-    createdAt: "2026-05-01",
-    status: "active",
-  },
-];
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-const SEED_ADMINS: AdminUser[] = [
-  {
-    id: "sa1",
-    name: "Super Admin",
-    email: "superadmin@ikhnayd.mn",
-    password: "admin1234",
-    role: "superadmin",
-    tenantId: null,
-    createdAt: "2026-05-01",
-    lastLogin: null,
-    status: "active",
-  },
-];
+const TOKEN_KEY = "ikna_admin_token";
+const USER_KEY = "ikna_admin_user";
 
-// ─── Storage helpers ──────────────────────────────────────────────────────────
-
-const KEYS = {
-  tenants: "ikna_tenants",
-  admins: "ikna_admins",
-  session: "ikna_session",
-  activeTenant: "ikna_active_tenant",
-};
-
-function load<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  const raw = localStorage.getItem(key);
-  return raw ? (JSON.parse(raw) as T) : fallback;
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-function save<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
+function saveToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers ?? {}),
+    },
+  });
+
+  if (res.status === 204) return undefined as T;
+
+  const body = await res.json();
+  if (!res.ok) {
+    const msg = body?.error?.message ?? `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return body as T;
 }
 
 // ─── Context shape ────────────────────────────────────────────────────────────
@@ -65,22 +61,26 @@ function save<T>(key: string, value: T) {
 type AdminCtx = {
   // Auth
   currentUser: AdminUser | null;
-  login: (email: string, password: string) => boolean;
+  loading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 
   // Tenants
   tenants: Tenant[];
   activeTenantId: string | null;
   setActiveTenantId: (id: string | null) => void;
-  addTenant: (t: Omit<Tenant, "id" | "createdAt">) => void;
-  updateTenant: (id: string, patch: Partial<Omit<Tenant, "id">>) => void;
-  deleteTenant: (id: string) => void;
+  addTenant: (t: Omit<Tenant, "id" | "createdAt">) => Promise<void>;
+  updateTenant: (id: string, patch: Partial<Omit<Tenant, "id">>) => Promise<void>;
+  deleteTenant: (id: string) => Promise<void>;
+  refreshTenants: () => Promise<void>;
 
   // Admin Users
   adminUsers: AdminUser[];
-  addAdminUser: (u: Omit<AdminUser, "id" | "createdAt" | "lastLogin">) => void;
-  updateAdminUser: (id: string, patch: Partial<Omit<AdminUser, "id">>) => void;
-  deleteAdminUser: (id: string) => void;
+  addAdminUser: (u: { name: string; email: string; password: string; role: string; tenantId: string | null; status: string }) => Promise<void>;
+  updateAdminUser: (id: string, patch: Record<string, unknown>) => Promise<void>;
+  deleteAdminUser: (id: string) => Promise<void>;
+  refreshAdminUsers: () => Promise<void>;
 };
 
 const AdminContext = createContext<AdminCtx | null>(null);
@@ -93,136 +93,159 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [activeTenantId, setActiveTenantIdState] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Hydrate from localStorage on mount
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    const storedTenants = load<Tenant[]>(KEYS.tenants, SEED_TENANTS);
-    const storedAdmins = load<AdminUser[]>(KEYS.admins, SEED_ADMINS);
-    const sessionId = load<string | null>(KEYS.session, null);
-    const storedActiveTenant = load<string | null>(KEYS.activeTenant, null);
-
-    // Seed if empty
-    if (!localStorage.getItem(KEYS.tenants)) save(KEYS.tenants, SEED_TENANTS);
-    if (!localStorage.getItem(KEYS.admins)) save(KEYS.admins, SEED_ADMINS);
-
-    setTenants(storedTenants);
-    setAdminUsers(storedAdmins);
-    setActiveTenantIdState(storedActiveTenant);
-
-    if (sessionId) {
-      const user = storedAdmins.find((u) => u.id === sessionId) ?? null;
-      setCurrentUser(user);
+    const stored = localStorage.getItem(USER_KEY);
+    if (stored) {
+      try { setCurrentUser(JSON.parse(stored)); } catch { /* ignore */ }
     }
-
     setReady(true);
   }, []);
 
-  // ── Auth ───────────────────────────────────────────────────────────────────
+  // Fetch data once we have a logged-in user
+  useEffect(() => {
+    if (!ready || !currentUser) return;
+    fetchTenants();
+    fetchAdminUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, currentUser?.id]);
 
-  const login = useCallback(
-    (email: string, password: string): boolean => {
-      const user = adminUsers.find(
-        (u) =>
-          u.email.toLowerCase() === email.toLowerCase() &&
-          u.password === password &&
-          u.status === "active"
-      );
-      if (!user) return false;
+  // ── Auth ──────────────────────────────────────────────────────────────────
 
-      const updated = adminUsers.map((u) =>
-        u.id === user.id
-          ? { ...u, lastLogin: new Date().toISOString().slice(0, 10) }
-          : u
-      );
-      setAdminUsers(updated);
-      save(KEYS.admins, updated);
-      save(KEYS.session, user.id);
-      setCurrentUser({ ...user, lastLogin: new Date().toISOString().slice(0, 10) });
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const body = await apiFetch<{
+        data: { token: string; user: { id: string; name: string; email: string; role: string; tenantId: string | null } };
+      }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const { token, user } = body.data;
+      saveToken(token);
+
+      const adminUser: AdminUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role as "superadmin" | "admin",
+        tenantId: user.tenantId,
+        createdAt: new Date().toISOString().slice(0, 10),
+        lastLogin: new Date().toISOString().slice(0, 10),
+        status: "active",
+      };
+      localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
+      setCurrentUser(adminUser);
       return true;
-    },
-    [adminUsers]
-  );
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(KEYS.session);
-    setCurrentUser(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Login failed");
+      return false;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // ── Active Tenant ──────────────────────────────────────────────────────────
+  const logout = useCallback(() => {
+    clearToken();
+    setCurrentUser(null);
+    setTenants([]);
+    setAdminUsers([]);
+  }, []);
+
+  // ── Active Tenant ─────────────────────────────────────────────────────────
 
   const setActiveTenantId = useCallback((id: string | null) => {
     setActiveTenantIdState(id);
-    save(KEYS.activeTenant, id);
   }, []);
 
-  // ── Tenants CRUD ───────────────────────────────────────────────────────────
+  // ── Tenants ───────────────────────────────────────────────────────────────
 
-  const addTenant = useCallback(
-    (t: Omit<Tenant, "id" | "createdAt">) => {
-      const next = [
-        ...tenants,
-        { ...t, id: `t${Date.now()}`, createdAt: new Date().toISOString().slice(0, 10) },
-      ];
-      setTenants(next);
-      save(KEYS.tenants, next);
-    },
-    [tenants]
-  );
+  async function fetchTenants() {
+    try {
+      const body = await apiFetch<{ data: Record<string, unknown>[] }>("/api/tenants");
+      setTenants(body.data.map(normalizeTenant));
+    } catch (e) {
+      console.error("Failed to fetch tenants:", e);
+    }
+  }
 
-  const updateTenant = useCallback(
-    (id: string, patch: Partial<Omit<Tenant, "id">>) => {
-      const next = tenants.map((t) => (t.id === id ? { ...t, ...patch } : t));
-      setTenants(next);
-      save(KEYS.tenants, next);
-    },
-    [tenants]
-  );
+  const refreshTenants = useCallback(() => fetchTenants(), []);
 
-  const deleteTenant = useCallback(
-    (id: string) => {
-      const next = tenants.filter((t) => t.id !== id);
-      setTenants(next);
-      save(KEYS.tenants, next);
-    },
-    [tenants]
-  );
+  const addTenant = useCallback(async (t: Omit<Tenant, "id" | "createdAt">) => {
+    const body = await apiFetch<{ data: Record<string, unknown> }>("/api/tenants", {
+      method: "POST",
+      body: JSON.stringify(t),
+    });
+    setTenants((prev) => [normalizeTenant(body.data), ...prev]);
+  }, []);
 
-  // ── Admin Users CRUD ───────────────────────────────────────────────────────
+  const updateTenant = useCallback(async (id: string, patch: Partial<Omit<Tenant, "id">>) => {
+    const body = await apiFetch<{ data: Record<string, unknown> }>(`/api/tenants/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    setTenants((prev) =>
+      prev.map((t) => (t.id === id ? normalizeTenant(body.data) : t))
+    );
+  }, []);
 
-  const addAdminUser = useCallback(
-    (u: Omit<AdminUser, "id" | "createdAt" | "lastLogin">) => {
-      const next = [
-        ...adminUsers,
-        {
-          ...u,
-          id: `u${Date.now()}`,
-          createdAt: new Date().toISOString().slice(0, 10),
-          lastLogin: null,
-        },
-      ];
-      setAdminUsers(next);
-      save(KEYS.admins, next);
-    },
-    [adminUsers]
-  );
+  const deleteTenant = useCallback(async (id: string) => {
+    await apiFetch(`/api/tenants/${id}`, { method: "DELETE" });
+    setTenants((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
-  const updateAdminUser = useCallback(
-    (id: string, patch: Partial<Omit<AdminUser, "id">>) => {
-      const next = adminUsers.map((u) => (u.id === id ? { ...u, ...patch } : u));
-      setAdminUsers(next);
-      save(KEYS.admins, next);
-    },
-    [adminUsers]
-  );
+  // ── Admin Users ───────────────────────────────────────────────────────────
 
-  const deleteAdminUser = useCallback(
-    (id: string) => {
-      const next = adminUsers.filter((u) => u.id !== id);
-      setAdminUsers(next);
-      save(KEYS.admins, next);
-    },
-    [adminUsers]
-  );
+  async function fetchAdminUsers() {
+    try {
+      const body = await apiFetch<{ data: Record<string, unknown>[] }>("/api/admin-users");
+      setAdminUsers(body.data.map(normalizeAdminUser));
+    } catch (e) {
+      console.error("Failed to fetch admin users:", e);
+    }
+  }
+
+  const refreshAdminUsers = useCallback(() => fetchAdminUsers(), []);
+
+  const addAdminUser = useCallback(async (u: {
+    name: string; email: string; password: string;
+    role: string; tenantId: string | null; status: string;
+  }) => {
+    const body = await apiFetch<{ data: Record<string, unknown> }>("/api/admin-users", {
+      method: "POST",
+      body: JSON.stringify({
+        username: u.email.split("@")[0].toLowerCase(),
+        email: u.email,
+        password: u.password,
+        displayName: u.name,
+        role: u.role,
+        tenantId: u.tenantId ?? null,
+        status: u.status,
+      }),
+    });
+    setAdminUsers((prev) => [normalizeAdminUser(body.data), ...prev]);
+  }, []);
+
+  const updateAdminUser = useCallback(async (id: string, patch: Record<string, unknown>) => {
+    const body = await apiFetch<{ data: Record<string, unknown> }>(`/api/admin-users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    setAdminUsers((prev) =>
+      prev.map((u) => (u.id === id ? normalizeAdminUser(body.data) : u))
+    );
+  }, []);
+
+  const deleteAdminUser = useCallback(async (id: string) => {
+    await apiFetch(`/api/admin-users/${id}`, { method: "DELETE" });
+    setAdminUsers((prev) => prev.filter((u) => u.id !== id));
+  }, []);
 
   if (!ready) return null;
 
@@ -230,6 +253,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     <AdminContext.Provider
       value={{
         currentUser,
+        loading,
+        error,
         login,
         logout,
         tenants,
@@ -238,10 +263,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         addTenant,
         updateTenant,
         deleteTenant,
+        refreshTenants,
         adminUsers,
         addAdminUser,
         updateAdminUser,
         deleteAdminUser,
+        refreshAdminUsers,
       }}
     >
       {children}
@@ -254,3 +281,50 @@ export function useAdmin() {
   if (!ctx) throw new Error("useAdmin must be used within AdminProvider");
   return ctx;
 }
+
+// ─── Normalizers (API response → local type) ──────────────────────────────────
+
+function normalizeTenant(raw: Record<string, unknown>): Tenant {
+  const f = (raw.features ?? {}) as Record<string, boolean>;
+  return {
+    id: String(raw.id ?? ""),
+    name: String(raw.name ?? ""),
+    slug: String(raw.slug ?? ""),
+    domain: String(raw.domain ?? ""),
+    databaseUri: String(raw.databaseUri ?? ""),
+    primaryColor: String(raw.primaryColor ?? "#D32F2F"),
+    secondaryColor: String(raw.secondaryColor ?? "#0f172a"),
+    accentColor: String(raw.accentColor ?? "#FFC107"),
+    logo: String(raw.logo ?? ""),
+    font: String(raw.font ?? "Inter"),
+    layout: (raw.layout as Tenant["layout"]) ?? "modern",
+    description: String(raw.description ?? ""),
+    bannerTitle: String(raw.bannerTitle ?? ""),
+    bannerSubtitle: String(raw.bannerSubtitle ?? ""),
+    contactEmail: String(raw.contactEmail ?? ""),
+    contactPhone: String(raw.contactPhone ?? ""),
+    address: String(raw.address ?? ""),
+    features: {
+      reviews: Boolean(f.reviews),
+      chat: Boolean(f.chat),
+      loyaltyProgram: Boolean(f.loyaltyProgram),
+    },
+    createdAt: raw.createdAt ? String(raw.createdAt).slice(0, 10) : "",
+    status: (raw.status as "active" | "inactive") ?? "active",
+  };
+}
+
+function normalizeAdminUser(raw: Record<string, unknown>): AdminUser {
+  return {
+    id: String(raw.id ?? ""),
+    name: String(raw.displayName ?? raw.name ?? ""),
+    email: String(raw.email ?? ""),
+    role: (raw.role as AdminRole) ?? "admin",
+    tenantId: raw.tenantId ? String(raw.tenantId) : null,
+    createdAt: raw.createdAt ? String(raw.createdAt).slice(0, 10) : "",
+    lastLogin: raw.lastLogin ? String(raw.lastLogin).slice(0, 10) : null,
+    status: (raw.status as "active" | "inactive") ?? "active",
+  };
+}
+
+type AdminRole = "superadmin" | "admin";

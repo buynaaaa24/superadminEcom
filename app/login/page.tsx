@@ -17,8 +17,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600)); // tactile delay
-    const ok = login(email.trim(), password);
+    const ok = await login(email.trim(), password);
     if (ok) {
       router.replace("/dashboard");
     } else {

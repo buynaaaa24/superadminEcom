@@ -12,11 +12,28 @@ export type Tenant = {
   id: string;
   name: string;
   slug: string;
-  /** Hex – e.g. "#D32F2F" */
+  /** Custom domain for the tenant's storefront, e.g. "boldstore.mn" */
+  domain: string;
+  /**
+   * MongoDB URI for the tenant's dedicated database.
+   * Empty string = use the central shared database with tenantId isolation.
+   */
+  databaseUri: string;
+  // Theme
   primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
   logo: string;
   font: string;
   layout: TenantThemeLayout;
+  // Store info
+  description: string;
+  bannerTitle: string;
+  bannerSubtitle: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  // Feature flags
   features: TenantFeatures;
   createdAt: string;
   status: "active" | "inactive";
@@ -30,8 +47,6 @@ export type AdminUser = {
   id: string;
   name: string;
   email: string;
-  /** Stored as plaintext for this demo – hash in production */
-  password: string;
   role: AdminRole;
   /** null means super admin – can see all tenants */
   tenantId: string | null;

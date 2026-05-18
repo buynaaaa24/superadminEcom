@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAdmin } from "../../lib/AdminContext";
 import type { AdminUser } from "../../lib/types";
 
-type UserForm = Omit<AdminUser, "id" | "createdAt" | "lastLogin">;
+type UserForm = Omit<AdminUser, "id" | "createdAt" | "lastLogin"> & { password: string };
 
 const EMPTY_FORM: UserForm = {
   name: "",
@@ -41,7 +41,7 @@ export default function AdminsPage() {
     setForm({
       name: u.name,
       email: u.email,
-      password: u.password,
+      password: "",
       role: u.role,
       tenantId: u.tenantId,
       status: u.status,
@@ -56,13 +56,19 @@ export default function AdminsPage() {
     setEditId(null);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) return;
+    if (!form.name.trim() || !form.email.trim()) return;
+    if (modal === "add" && !form.password.trim()) return;
     if (modal === "add") {
-      addAdminUser(form);
+      await addAdminUser(form);
     } else if (modal === "edit" && editId) {
-      updateAdminUser(editId, form);
+      const patch: Record<string, unknown> = {
+        displayName: form.name, email: form.email,
+        role: form.role, tenantId: form.tenantId, status: form.status,
+      };
+      if (form.password.trim()) patch.password = form.password;
+      await updateAdminUser(editId, patch);
     }
     closeModal();
   }
