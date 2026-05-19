@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAdmin } from "../../lib/AdminContext";
 import type { Tenant } from "../../lib/types";
 
@@ -41,6 +41,38 @@ export default function TenantsPage() {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("http://103.236.194.106:8000/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setField("logo", data.url);
+      } else {
+        console.error("Upload failed");
+      }
+    } catch (err) {
+      console.error("Upload error", err);
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
 
   const filtered = tenants.filter(
     (t) =>
@@ -372,10 +404,21 @@ export default function TenantsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Logo URL</label>
-                      <input type="text" value={form.logo} onChange={(e) => setField("logo", e.target.value)}
-                        placeholder="https://..." className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30"
-                      />
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Лого</label>
+                      <div className="flex items-center gap-3">
+                        {form.logo && (
+                          <img src={form.logo} alt="Logo" className="w-10 h-10 object-contain bg-slate-50 border border-slate-200 rounded" />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={handleLogoUpload}
+                          disabled={uploadingLogo}
+                          className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                        />
+                      </div>
+                      {uploadingLogo && <p className="text-xs text-slate-400 mt-1">Хуулж байна...</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
