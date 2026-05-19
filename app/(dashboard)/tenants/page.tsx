@@ -53,7 +53,8 @@ export default function TenantsPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://103.236.194.106:8000/api/upload", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/upload`, {
         method: "POST",
         body: formData,
       });
