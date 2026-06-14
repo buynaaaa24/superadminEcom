@@ -44,10 +44,22 @@ export type Tenant = {
   emDbUri?: string;
   emBranchId?: string;
   emOrgId?: string;
+  // QPay – global defaults in .env; per-tenant values override when set
   qpayUsername?: string;
   qpayPassword?: string;
   qpayInvoiceCode?: string;
-  qpayMerchantId?: string;
+  qpayFeeType?: "CHARGE_PAYER" | "CHARGE_MERCHANT";
+  qpayMerchantName?: string;
+  qpayRegister?: string;
+  qpayPhone?: string;
+  qpayEmail?: string;
+  qpayAddress?: string;
+  qpayCity?: string;
+  qpayDistrict?: string;
+  qpayMccCode?: string;
+  qpayBankName?: string;
+  qpayBankAccount?: string;
+  qpayBankAccountName?: string;
   createdAt: string;
   status: "active" | "inactive";
 };
