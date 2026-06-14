@@ -66,6 +66,8 @@ export default function TenantsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [qpayRegistering, setQpayRegistering] = useState(false);
+  const [qpayRegResult, setQpayRegResult] = useState<{ success: boolean; msg: string } | null>(null);
 
   const [searchRegInput, setSearchRegInput] = useState("");
   const [searchRegResult, setSearchRegResult] = useState<any>(null);
@@ -297,7 +299,7 @@ export default function TenantsPage() {
     setEditId(t.id); setSection("identity"); setErr(null); setModal("edit");
   }
 
-  function closeModal() { setModal(null); setEditId(null); setErr(null); }
+  function closeModal() { setModal(null); setEditId(null); setErr(null); setQpayRegResult(null); }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -316,6 +318,31 @@ export default function TenantsPage() {
 
   function setField<K extends keyof TenantForm>(k: K, v: TenantForm[K]) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function handleQpayRegister() {
+    if (!editId) return;
+    setQpayRegistering(true);
+    setQpayRegResult(null);
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const token = typeof window !== "undefined" ? localStorage.getItem("ikna_admin_token") : null;
+      const res = await fetch(`${API_BASE}/api/qpay/register-merchant`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ tenantId: editId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setQpayRegResult({ success: true, msg: "QPay-д амжилттай бүртгэгдлээ!" });
+      } else {
+        setQpayRegResult({ success: false, msg: json.error?.message ?? json.aldaa ?? "Бүртгэлт амжилтгүй болсон" });
+      }
+    } catch (e: any) {
+      setQpayRegResult({ success: false, msg: e?.message ?? "Сүлжээний алдаа" });
+    } finally {
+      setQpayRegistering(false);
+    }
   }
 
   const SECTIONS: { id: Section; label: string }[] = [
@@ -977,6 +1004,41 @@ export default function TenantsPage() {
                         />
                       </div>
                     </div>
+
+                    {/* Register merchant action — only shown when editing an existing tenant */}
+                    {modal === "edit" && (
+                      <div className="border-t border-slate-100 pt-4 space-y-3">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">QPay-д бүртгэх</p>
+                        <p className="text-xs text-slate-400">Дээрх мэдээллийг хадгалсны дараа QPay API-д мерчант бүртгэл үүсгэнэ.</p>
+                        {qpayRegResult && (
+                          <div className={`text-xs font-semibold px-3 py-2 rounded-xl ${
+                            qpayRegResult.success
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-red-50 text-red-700 border border-red-200"
+                          }`}>
+                            {qpayRegResult.msg}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleQpayRegister}
+                          disabled={qpayRegistering}
+                          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
+                        >
+                          {qpayRegistering ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                              </svg>
+                              Бүртгэж байна...
+                            </>
+                          ) : (
+                            "QPay-д мерчант бүртгэх"
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
