@@ -91,15 +91,52 @@ export default function TenantsPage() {
     return () => clearTimeout(timer);
   }, [searchRegInput]);
 
-  function handleSelectMatchedReg(data: any) {
+  async function handleSelectMatchedReg(data: any) {
+    setSearchingReg(true);
+
     const isIndividual = data.register && data.register.length > 7;
     const registerTurul = data.registerTurul || (isIndividual ? "Хувь хүн" : "Байгууллага");
 
     const email = Array.isArray(data.mail) ? data.mail[0] || "" : data.mail || "";
     const phone = Array.isArray(data.utas) ? data.utas[0] || "" : data.utas || "";
 
-    const systems: string[] = Array.isArray(data.systemuud) ? data.systemuud : [];
-    const systemTurul = data.systemTurul || (systems[0] || "");
+    // Resolve head company and branches
+    let headCompany = data;
+    const branches = [data];
+
+    // If searching for a branch directly, fetch the head company first
+    if (data.salbarEsekh && data.tolgoiCompany) {
+      try {
+        const headRes = await fetch(`https://admin.zevtabs.mn/api/baiguullagaTokengu?register=${data.tolgoiCompany}`);
+        if (headRes.ok) {
+          headCompany = await headRes.json();
+          if (!branches.some((b) => b._id === headCompany._id)) {
+            branches.push(headCompany);
+          }
+        }
+      } catch (err) {
+        console.error("Fetch head company error:", err);
+      }
+    }
+
+    // Resolve all other branches of the head company
+    const salbariinToo = headCompany.salbariinToo || 1;
+    const mainRegister = headCompany.register;
+    if (salbariinToo > 1 && mainRegister) {
+      for (let i = 2; i <= salbariinToo; i++) {
+        try {
+          const branchRes = await fetch(`https://admin.zevtabs.mn/api/baiguullagaTokengu?register=${mainRegister}-${i}`);
+          if (branchRes.ok) {
+            const branchData = await branchRes.json();
+            if (branchData && branchData._id && !branches.some((b) => b._id === branchData._id)) {
+              branches.push(branchData);
+            }
+          }
+        } catch (err) {
+          console.error(`Fetch branch ${mainRegister}-${i} error:`, err);
+        }
+      }
+    }
 
     let posDbUri = "";
     let posBranchId = "";
@@ -108,15 +145,21 @@ export default function TenantsPage() {
     let emBranchId = "";
     let emOrgId = "";
 
-    if (systems.includes("pos") || systemTurul === "pos") {
-      posDbUri = "https://pharma.zevtabs.mn/api";
-      posBranchId = data._id || "";
-      posOrgId = data._id || "";
-    }
-    if (systems.includes("Pharm") || systems.includes("EPharm") || systemTurul === "Pharm" || systemTurul === "EPharm") {
-      emDbUri = "https://pharma.zevtabs.mn/api1";
-      emBranchId = data._id || "";
-      emOrgId = data._id || "";
+    // Iterate through all resolved branches to find active integration links
+    for (const b of branches) {
+      const systems: string[] = Array.isArray(b.systemuud) ? b.systemuud : [];
+      const systemTurul = b.systemTurul || (systems[0] || "");
+
+      if (systems.includes("pos") || systemTurul === "pos") {
+        posDbUri = "https://pharma.zevtabs.mn/api";
+        posBranchId = b._id || "";
+        posOrgId = headCompany._id || b._id || "";
+      }
+      if (systems.includes("Pharm") || systems.includes("EPharm") || systemTurul === "Pharm" || systemTurul === "EPharm") {
+        emDbUri = "https://pharma.zevtabs.mn/api1";
+        emBranchId = b._id || "";
+        emOrgId = headCompany._id || b._id || "";
+      }
     }
 
     setForm((f) => ({
@@ -137,6 +180,7 @@ export default function TenantsPage() {
       emOrgId: emOrgId || f.emOrgId,
     }));
 
+    setSearchingReg(false);
     setShowRegDropdown(false);
     setSearchRegInput("");
   }
@@ -306,6 +350,16 @@ export default function TenantsPage() {
                     </svg>
                     {tenantAdmins.length} админ
                   </div>
+                  {t.posDbUri && (
+                    <span className="inline-flex items-center text-[10px] font-extrabold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md border border-emerald-100 uppercase tracking-wide">
+                      POS
+                    </span>
+                  )}
+                  {t.emDbUri && (
+                    <span className="inline-flex items-center text-[10px] font-extrabold bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded-md border border-teal-100 uppercase tracking-wide">
+                      EM
+                    </span>
+                  )}
                 </div>
                 <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg mb-4 w-fit ${hasDedicatedDb ? "bg-violet-50 text-violet-700" : "bg-slate-50 text-slate-500"}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,6 +496,23 @@ export default function TenantsPage() {
                       </div>
                     </div>
 
+                    {(form.posDbUri || form.emDbUri) && (
+                      <div className="flex gap-2">
+                        {form.posDbUri && (
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-100 shadow-xs">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                            POS Холбогдсон
+                          </span>
+                        )}
+                        {form.emDbUri && (
+                          <span className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-teal-100 shadow-xs">
+                            <span className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+                            EM Холбогдсон
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                         Домэйн
@@ -498,60 +569,6 @@ export default function TenantsPage() {
                             {s === "active" ? "Идэвхтэй" : "Идэвхгүй"}
                           </button>
                         ))}
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-4 space-y-4">
-                      <h4 className="text-sm font-bold text-slate-700">Системийн холболт</h4>
-                      
-                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
-                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">POS холболт</h5>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="col-span-3">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">POS API URL</label>
-                            <input type="text" value={form.posDbUri} onChange={(e) => setField("posDbUri", e.target.value)}
-                              placeholder="https://pharma.zevtabs.mn/api"
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Branch ID</label>
-                            <input type="text" value={form.posBranchId} onChange={(e) => setField("posBranchId", e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Org ID</label>
-                            <input type="text" value={form.posOrgId} onChange={(e) => setField("posOrgId", e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
-                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">EM холболт</h5>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="col-span-3">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">EM API URL</label>
-                            <input type="text" value={form.emDbUri} onChange={(e) => setField("emDbUri", e.target.value)}
-                              placeholder="https://pharma.zevtabs.mn/api1"
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Branch ID</label>
-                            <input type="text" value={form.emBranchId} onChange={(e) => setField("emBranchId", e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Org ID</label>
-                            <input type="text" value={form.emOrgId} onChange={(e) => setField("emOrgId", e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
-                            />
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </>
