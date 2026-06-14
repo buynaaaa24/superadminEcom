@@ -35,6 +35,15 @@ export type Tenant = {
   address: string;
   // Feature flags
   features: TenantFeatures;
+  // Integration
+  register?: string;
+  registerTurul?: "Байгууллага" | "Хувь хүн";
+  posDbUri?: string;
+  posBranchId?: string;
+  posOrgId?: string;
+  emDbUri?: string;
+  emBranchId?: string;
+  emOrgId?: string;
   createdAt: string;
   status: "active" | "inactive";
 };

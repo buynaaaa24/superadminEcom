@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAdmin } from "../../lib/AdminContext";
 import type { Tenant } from "../../lib/types";
 
@@ -26,6 +26,14 @@ const EMPTY_FORM: TenantForm = {
   contactEmail: "", contactPhone: "", address: "",
   features: { reviews: false, chat: false, loyaltyProgram: false },
   status: "active",
+  register: "",
+  registerTurul: "Байгууллага",
+  posDbUri: "",
+  posBranchId: "",
+  posOrgId: "",
+  emDbUri: "",
+  emBranchId: "",
+  emOrgId: "",
 };
 
 function slugify(s: string) {
@@ -43,6 +51,95 @@ export default function TenantsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [searchRegInput, setSearchRegInput] = useState("");
+  const [searchRegResult, setSearchRegResult] = useState<any>(null);
+  const [searchingReg, setSearchingReg] = useState(false);
+  const [showRegDropdown, setShowRegDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!searchRegInput.trim()) {
+      setSearchRegResult(null);
+      setShowRegDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingReg(true);
+      try {
+        const res = await fetch(`https://admin.zevtabs.mn/api/baiguullagaTokengu?register=${encodeURIComponent(searchRegInput.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.register) {
+            setSearchRegResult(data);
+            setShowRegDropdown(true);
+          } else {
+            setSearchRegResult(null);
+            setShowRegDropdown(false);
+          }
+        } else {
+          setSearchRegResult(null);
+          setShowRegDropdown(false);
+        }
+      } catch (err) {
+        console.error("Search register error:", err);
+        setSearchRegResult(null);
+        setShowRegDropdown(false);
+      } finally {
+        setSearchingReg(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchRegInput]);
+
+  function handleSelectMatchedReg(data: any) {
+    const isIndividual = data.register && data.register.length > 7;
+    const registerTurul = data.registerTurul || (isIndividual ? "Хувь хүн" : "Байгууллага");
+
+    const email = Array.isArray(data.mail) ? data.mail[0] || "" : data.mail || "";
+    const phone = Array.isArray(data.utas) ? data.utas[0] || "" : data.utas || "";
+
+    const systems: string[] = Array.isArray(data.systemuud) ? data.systemuud : [];
+    const systemTurul = data.systemTurul || (systems[0] || "");
+
+    let posDbUri = "";
+    let posBranchId = "";
+    let posOrgId = "";
+    let emDbUri = "";
+    let emBranchId = "";
+    let emOrgId = "";
+
+    if (systems.includes("pos") || systemTurul === "pos") {
+      posDbUri = "https://pharma.zevtabs.mn/api";
+      posBranchId = data._id || "";
+      posOrgId = data._id || "";
+    }
+    if (systems.includes("Pharm") || systems.includes("EPharm") || systemTurul === "Pharm" || systemTurul === "EPharm") {
+      emDbUri = "https://pharma.zevtabs.mn/api1";
+      emBranchId = data._id || "";
+      emOrgId = data._id || "";
+    }
+
+    setForm((f) => ({
+      ...f,
+      name: data.ner || f.name,
+      slug: data.ner ? slugify(data.ner) : f.slug,
+      register: data.register || "",
+      registerTurul: registerTurul as any,
+      contactEmail: email || f.contactEmail,
+      contactPhone: phone || f.contactPhone,
+      address: data.khayag || f.address,
+      description: data.dotoodNer || f.description,
+      posDbUri: posDbUri || f.posDbUri,
+      posBranchId: posBranchId || f.posBranchId,
+      posOrgId: posOrgId || f.posOrgId,
+      emDbUri: emDbUri || f.emDbUri,
+      emBranchId: emBranchId || f.emBranchId,
+      emOrgId: emOrgId || f.emOrgId,
+    }));
+
+    setShowRegDropdown(false);
+    setSearchRegInput("");
+  }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -94,6 +191,14 @@ export default function TenantsPage() {
       description: t.description, bannerTitle: t.bannerTitle, bannerSubtitle: t.bannerSubtitle,
       contactEmail: t.contactEmail, contactPhone: t.contactPhone, address: t.address,
       features: { ...t.features }, status: t.status,
+      register: t.register ?? "",
+      registerTurul: t.registerTurul ?? "Байгууллага",
+      posDbUri: t.posDbUri ?? "",
+      posBranchId: t.posBranchId ?? "",
+      posOrgId: t.posOrgId ?? "",
+      emDbUri: t.emDbUri ?? "",
+      emBranchId: t.emBranchId ?? "",
+      emOrgId: t.emOrgId ?? "",
     });
     setEditId(t.id); setSection("identity"); setErr(null); setModal("edit");
   }
@@ -262,6 +367,42 @@ export default function TenantsPage() {
                 {/* Identity tab */}
                 {section === "identity" && (
                   <>
+                    {modal === "add" && (
+                      <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl relative mb-4">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                          Байгууллага/Иргэн хайж мэдээлэл автомат бөглөх
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={searchRegInput}
+                            onChange={(e) => setSearchRegInput(e.target.value)}
+                            placeholder="Регистрийн дугаар оруулах (жишээ нь: 8080808)..."
+                            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                          />
+                          {searchingReg && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="w-4 h-4 border-2 border-[#D32F2F] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                        {showRegDropdown && searchRegResult && (
+                          <div className="absolute left-4 right-4 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto p-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectMatchedReg(searchRegResult)}
+                              className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-lg transition-colors flex flex-col gap-0.5"
+                            >
+                              <span className="font-bold text-slate-800 text-sm">{searchRegResult.ner}</span>
+                              <span className="text-xs text-slate-400 font-mono">
+                                РД: {searchRegResult.register} | Системүүд: {((searchRegResult.systemuud || []) as string[]).join(", ") || searchRegResult.systemTurul || "Байхгүй"}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">Сайтын нэр *</label>
@@ -279,6 +420,25 @@ export default function TenantsPage() {
                             className="w-full border border-slate-200 rounded-xl pl-6 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30"
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Регистрийн төрөл</label>
+                        <select value={form.registerTurul} onChange={(e) => setField("registerTurul", e.target.value as any)}
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                        >
+                          <option value="Байгууллага">Байгууллага</option>
+                          <option value="Хувь хүн">Хувь хүн</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Регистрийн дугаар</label>
+                        <input type="text" value={form.register} onChange={(e) => setField("register", e.target.value)}
+                          placeholder="Регистрийн дугаар"
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30"
+                        />
                       </div>
                     </div>
 
@@ -338,6 +498,60 @@ export default function TenantsPage() {
                             {s === "active" ? "Идэвхтэй" : "Идэвхгүй"}
                           </button>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4 space-y-4">
+                      <h4 className="text-sm font-bold text-slate-700">Системийн холболт</h4>
+                      
+                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">POS холболт</h5>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="col-span-3">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">POS API URL</label>
+                            <input type="text" value={form.posDbUri} onChange={(e) => setField("posDbUri", e.target.value)}
+                              placeholder="https://pharma.zevtabs.mn/api"
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Branch ID</label>
+                            <input type="text" value={form.posBranchId} onChange={(e) => setField("posBranchId", e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Org ID</label>
+                            <input type="text" value={form.posOrgId} onChange={(e) => setField("posOrgId", e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">EM холболт</h5>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="col-span-3">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">EM API URL</label>
+                            <input type="text" value={form.emDbUri} onChange={(e) => setField("emDbUri", e.target.value)}
+                              placeholder="https://pharma.zevtabs.mn/api1"
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Branch ID</label>
+                            <input type="text" value={form.emBranchId} onChange={(e) => setField("emBranchId", e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Org ID</label>
+                            <input type="text" value={form.emOrgId} onChange={(e) => setField("emOrgId", e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30 bg-white"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </>
