@@ -317,6 +317,10 @@ function normalizeTenant(raw: Record<string, unknown>): Tenant {
     emDbUri: raw.emDbUri ? String(raw.emDbUri) : "",
     emBranchId: raw.emBranchId ? String(raw.emBranchId) : "",
     emOrgId: raw.emOrgId ? String(raw.emOrgId) : "",
+    qpayUsername: raw.qpayUsername ? String(raw.qpayUsername) : "",
+    qpayPassword: raw.qpayPassword ? String(raw.qpayPassword) : "",
+    qpayInvoiceCode: raw.qpayInvoiceCode ? String(raw.qpayInvoiceCode) : "",
+    qpayMerchantId: raw.qpayMerchantId ? String(raw.qpayMerchantId) : "",
     createdAt: raw.createdAt ? String(raw.createdAt).slice(0, 10) : "",
     status: (raw.status as "active" | "inactive") ?? "active",
   };

@@ -44,6 +44,10 @@ export type Tenant = {
   emDbUri?: string;
   emBranchId?: string;
   emOrgId?: string;
+  qpayUsername?: string;
+  qpayPassword?: string;
+  qpayInvoiceCode?: string;
+  qpayMerchantId?: string;
   createdAt: string;
   status: "active" | "inactive";
 };

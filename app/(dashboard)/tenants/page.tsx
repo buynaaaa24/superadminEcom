@@ -16,7 +16,7 @@ const PALETTE = [
 ];
 
 type TenantForm = Omit<Tenant, "id" | "createdAt">;
-type Section = "identity" | "theme" | "store" | "features";
+type Section = "identity" | "theme" | "store" | "features" | "payment";
 
 const EMPTY_FORM: TenantForm = {
   name: "", slug: "", domain: "", databaseUri: "",
@@ -34,6 +34,10 @@ const EMPTY_FORM: TenantForm = {
   emDbUri: "",
   emBranchId: "",
   emOrgId: "",
+  qpayUsername: "",
+  qpayPassword: "",
+  qpayInvoiceCode: "",
+  qpayMerchantId: "",
 };
 
 function slugify(s: string) {
@@ -263,6 +267,10 @@ export default function TenantsPage() {
       emDbUri: t.emDbUri ?? "",
       emBranchId: t.emBranchId ?? "",
       emOrgId: t.emOrgId ?? "",
+      qpayUsername: t.qpayUsername ?? "",
+      qpayPassword: t.qpayPassword ?? "",
+      qpayInvoiceCode: t.qpayInvoiceCode ?? "",
+      qpayMerchantId: t.qpayMerchantId ?? "",
     });
     setEditId(t.id); setSection("identity"); setErr(null); setModal("edit");
   }
@@ -293,6 +301,7 @@ export default function TenantsPage() {
     { id: "theme", label: "Загвар" },
     { id: "store", label: "Дэлгүүр" },
     { id: "features", label: "Функц" },
+    { id: "payment", label: "QPay" },
   ];
 
   return (
@@ -378,6 +387,11 @@ export default function TenantsPage() {
                   {t.emDbUri && (
                     <span className="inline-flex items-center text-[10px] font-extrabold bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded-md border border-teal-100 uppercase tracking-wide">
                       EM
+                    </span>
+                  )}
+                  {t.qpayUsername && (
+                    <span className="inline-flex items-center text-[10px] font-extrabold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md border border-blue-100 uppercase tracking-wide">
+                      QPay
                     </span>
                   )}
                 </div>
@@ -727,6 +741,81 @@ export default function TenantsPage() {
                       />
                     </div>
                   </>
+                )}
+
+                {/* Payment tab */}
+                {section === "payment" && (
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-blue-800">QPay төлбөрийн систем</p>
+                        <p className="text-xs text-blue-600 mt-0.5">Энэ тохиргоо тухайн дэлгүүрийн QPay интеграцид ашиглагдана</p>
+                      </div>
+                      {form.qpayUsername && (
+                        <span className="ml-auto inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                          Холбогдсон
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">QPay Хэрэглэгчийн нэр</label>
+                      <input
+                        type="text"
+                        value={form.qpayUsername ?? ""}
+                        onChange={(e) => setField("qpayUsername", e.target.value)}
+                        placeholder="qpay_username"
+                        autoComplete="off"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">QPay Нууц үг</label>
+                      <input
+                        type="password"
+                        value={form.qpayPassword ?? ""}
+                        onChange={(e) => setField("qpayPassword", e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Invoice Code
+                        <span className="ml-1 text-xs font-normal text-slate-400">(QPay portal-аас авна)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.qpayInvoiceCode ?? ""}
+                        onChange={(e) => setField("qpayInvoiceCode", e.target.value)}
+                        placeholder="STORE_INVOICE"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Merchant ID
+                        <span className="ml-1 text-xs font-normal text-slate-400">(заавал биш)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.qpayMerchantId ?? ""}
+                        onChange={(e) => setField("qpayMerchantId", e.target.value)}
+                        placeholder="merchant_id"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {/* Features tab */}
