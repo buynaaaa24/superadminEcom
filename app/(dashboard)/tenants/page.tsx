@@ -171,12 +171,12 @@ export default function TenantsPage() {
       const systemTurul = b.systemTurul || (systems[0] || "");
 
       if (systems.includes("pos") || systemTurul === "pos") {
-        posDbUri = "https://pharma.zevtabs.mn/api";
+        posDbUri = "https://pos.zevtabs.mn/api/";
         posBranchId = b._id || "";
         posOrgId = headCompany._id || b._id || "";
       }
       if (systems.includes("Pharm") || systems.includes("EPharm") || systemTurul === "Pharm" || systemTurul === "EPharm") {
-        emDbUri = "https://pharma.zevtabs.mn/api1";
+        emDbUri = "https://pharma.zevtabs.mn/api/";
         emBranchId = b._id || "";
         emOrgId = headCompany._id || b._id || "";
       }
