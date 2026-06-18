@@ -34,9 +34,6 @@ const EMPTY_FORM: TenantForm = {
   emDbUri: "",
   emBranchId: "",
   emOrgId: "",
-  qpayUsername: "",
-  qpayPassword: "",
-  qpayInvoiceCode: "",
   qpayFeeType: "CHARGE_PAYER",
   qpayMerchantName: "",
   qpayRegister: "",
@@ -280,9 +277,6 @@ export default function TenantsPage() {
       emDbUri: t.emDbUri ?? "",
       emBranchId: t.emBranchId ?? "",
       emOrgId: t.emOrgId ?? "",
-      qpayUsername: t.qpayUsername ?? "",
-      qpayPassword: t.qpayPassword ?? "",
-      qpayInvoiceCode: t.qpayInvoiceCode ?? "",
       qpayFeeType: t.qpayFeeType ?? "CHARGE_PAYER",
       qpayMerchantName: t.qpayMerchantName ?? "",
       qpayRegister: t.qpayRegister ?? "",
@@ -336,7 +330,12 @@ export default function TenantsPage() {
       if (res.ok && json.success) {
         setQpayRegResult({ success: true, msg: "QPay-д амжилттай бүртгэгдлээ!" });
       } else {
-        setQpayRegResult({ success: false, msg: json.error?.message ?? json.aldaa ?? "Бүртгэлт амжилтгүй болсон" });
+        const detail = [
+          json.error?.message,
+          json.error?.response ? JSON.stringify(json.error.response) : null,
+          json.aldaa,
+        ].filter(Boolean).join(" | ") || "Бүртгэлт амжилтгүй болсон";
+        setQpayRegResult({ success: false, msg: detail });
       }
     } catch (e: any) {
       setQpayRegResult({ success: false, msg: e?.message ?? "Сүлжээний алдаа" });
@@ -438,7 +437,7 @@ export default function TenantsPage() {
                       EM
                     </span>
                   )}
-                  {t.qpayInvoiceCode && (
+                  {t.qpayMerchantName && (
                     <span className="inline-flex items-center text-[10px] font-extrabold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md border border-blue-100 uppercase tracking-wide">
                       QPay
                     </span>
@@ -806,7 +805,7 @@ export default function TenantsPage() {
                         <p className="text-sm font-bold text-blue-800">QPay харилцагч бүртгэл</p>
                         <p className="text-xs text-blue-600 mt-0.5">Глобал нэвтрэх эрх (.env-д) · Тухайн дэлгүүрийн мерчант мэдээлэл доор</p>
                       </div>
-                      {form.qpayInvoiceCode && (
+                      {form.qpayMerchantName && (
                         <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0">
                           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                           Тохируулсан
@@ -816,55 +815,7 @@ export default function TenantsPage() {
 
                     {/* Global creds note */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-500">
-                      Глобал эрх: серверийн <span className="font-mono">.env</span>-д <span className="font-semibold text-slate-600">QPAY_MERCHANT_SERVER / QPAY_USERNAME / QPAY_PASSWORD</span> тохируулна.
-                      Доорх талбарууд хоосон байвал глобал эрх ашиглана.
-                    </div>
-
-                    {/* Per-tenant credential overrides */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                          QPay Хэрэглэгчийн нэр
-                          <span className="ml-1 text-xs font-normal text-slate-400">(override)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={form.qpayUsername ?? ""}
-                          onChange={(e) => setField("qpayUsername", e.target.value)}
-                          placeholder="qpay_username"
-                          autoComplete="off"
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                          QPay Нууц үг
-                          <span className="ml-1 text-xs font-normal text-slate-400">(override)</span>
-                        </label>
-                        <input
-                          type="password"
-                          value={form.qpayPassword ?? ""}
-                          onChange={(e) => setField("qpayPassword", e.target.value)}
-                          placeholder="••••••••"
-                          autoComplete="new-password"
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                        />
-                      </div>
-                    </div>
-
-                    {/* QPay Invoice Code */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                        Invoice Code <span className="text-red-500">*</span>
-                        <span className="ml-1 text-xs font-normal text-slate-400">(QPay portal-аас авна)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.qpayInvoiceCode ?? ""}
-                        onChange={(e) => setField("qpayInvoiceCode", e.target.value)}
-                        placeholder="STORE_INVOICE"
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                      />
+                      Нэвтрэх эрх: серверийн <span className="font-mono">.env</span>-д <span className="font-semibold text-slate-600">QPAY_MERCHANT_SERVER / QPAY_USERNAME / QPAY_PASSWORD</span> тохируулна.
                     </div>
 
                     {/* Fee type – required */}
