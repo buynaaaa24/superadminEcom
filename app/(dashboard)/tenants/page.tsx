@@ -544,7 +544,7 @@ export default function TenantsPage() {
                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">Сайтын нэр *</label>
                         <input required type="text" value={form.name}
                           onChange={(e) => { setField("name", e.target.value); setField("slug", slugify(e.target.value)); }}
-                          placeholder="Их наяд плаза"
+                          placeholder="  плаза"
                           className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30"
                         />
                       </div>
@@ -787,6 +787,68 @@ export default function TenantsPage() {
                         placeholder="Улаанбаатар хот, ..."
                         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/30"
                       />
+                    </div>
+
+                    {/* EM Integration */}
+                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                      <p className="text-xs font-bold text-teal-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-2 h-2 bg-teal-500 rounded-full" />
+                        EM (Эмийн сан) интеграц
+                      </p>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">EM сервер URL</label>
+                        <input type="text" value={form.emDbUri} onChange={(e) => setField("emDbUri", e.target.value)}
+                          placeholder="https://pharma.zevtabs.mn/api/"
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Байгууллагын ID <span className="font-mono text-slate-400">(baiguullagiinId)</span></label>
+                          <input type="text" value={form.emOrgId} onChange={(e) => setField("emOrgId", e.target.value)}
+                            placeholder="652e52e91ff333127f361a15"
+                            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Салбарын ID <span className="font-mono text-slate-400">(salbariinId)</span></label>
+                          <input type="text" value={form.emBranchId} onChange={(e) => setField("emBranchId", e.target.value)}
+                            placeholder="652e52e91ff333127f361a15"
+                            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* POS Integration */}
+                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                      <p className="text-xs font-bold text-sky-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-2 h-2 bg-sky-500 rounded-full" />
+                        POS интеграц
+                      </p>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">POS сервер URL</label>
+                        <input type="text" value={form.posDbUri} onChange={(e) => setField("posDbUri", e.target.value)}
+                          placeholder="https://pos.zevtabs.mn/api/"
+                          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Байгууллагын ID <span className="font-mono text-slate-400">(baiguullagiinId)</span></label>
+                          <input type="text" value={form.posOrgId} onChange={(e) => setField("posOrgId", e.target.value)}
+                            placeholder="652e52e91ff333127f361a15"
+                            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Салбарын ID <span className="font-mono text-slate-400">(salbariinId)</span></label>
+                          <input type="text" value={form.posBranchId} onChange={(e) => setField("posBranchId", e.target.value)}
+                            placeholder="652e52e91ff333127f361a15"
+                            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
