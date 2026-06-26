@@ -102,7 +102,7 @@ export default function DashboardPage() {
             {activeTenantId ? "Сонгосон төсөл" : "Бүх төслүүд"}
           </h2>
           <Link href="/tenants" className="text-[#D32F2F] text-sm font-medium hover:underline">
-            Бүгдийг харах →
+            Бүгдийг харах 
           </Link>
         </div>
         <div className="overflow-x-auto">

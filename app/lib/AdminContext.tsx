@@ -282,7 +282,7 @@ export function useAdmin() {
   return ctx;
 }
 
-// ─── Normalizers (API response → local type) ──────────────────────────────────
+// ─── Normalizers (API response  local type) ──────────────────────────────────
 
 function normalizeTenant(raw: Record<string, unknown>): Tenant {
   const f = (raw.features ?? {}) as Record<string, boolean>;
